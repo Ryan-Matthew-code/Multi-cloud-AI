@@ -1,32 +1,22 @@
-variable "resource_group_name" {
-  description = "Name of the Azure resource group"
+variable "region" {
+  description = "AWS region for all resources"
   type        = string
-  default     = "ml-platform-rg"
+  default     = "us-east-1"
 }
 
-variable "location" {
-  description = "Azure region for all resources"
+variable "project_name" {
+  description = "Project name used as a prefix for resource naming"
   type        = string
-  default     = "eastus"
+  default     = "ml-platform"
 }
 
-variable "storage_account_name" {
-  description = "Globally unique name for the storage account"
-  type        = string
-}
-
-variable "key_vault_name" {
-  description = "Globally unique name for the key vault"
+variable "artifacts_bucket_name" {
+  description = "Globally unique S3 bucket name for ML artifacts"
   type        = string
 }
 
-variable "workspace_name" {
-  description = "Name of the Azure Machine Learning workspace"
+variable "notebook_instance_type" {
+  description = "Instance type for the SageMaker notebook"
   type        = string
-  default     = "ml-platform-workspace"
-}
-
-variable "tenant_id" {
-  description = "Azure AD tenant ID"
-  type        = string
+  default     = "ml.t3.medium"
 }

@@ -1,56 +1,57 @@
-# Azure module: provisions a resource group, an Azure Machine Learning
-# workspace, and supporting storage/key vault resources for ML workloads.
+# AWS module: provisions an S3 bucket for ML artifacts, an IAM role for
+# SageMaker, and a SageMaker notebook instance for model development.
 
 terraform {
   required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "~> 3.100"
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.50"
     }
   }
 }
 
-provider "azurerm" {
-  features {}
+provider "aws" {
+  region = var.region
 }
 
-resource "azurerm_resource_group" "ml_rg" {
-  name     = var.resource_group_name
-  location = var.location
+resource "aws_s3_bucket" "ml_artifacts" {
+  bucket = var.artifacts_bucket_name
 }
 
-resource "azurerm_storage_account" "ml_storage" {
-  name                     = var.storage_account_name
-  resource_group_name      = azurerm_resource_group.ml_rg.name
-  location                 = azurerm_resource_group.ml_rg.location
-  account_tier             = "Standard"
-  account_replication_type = "LRS"
-}
-
-resource "azurerm_key_vault" "ml_kv" {
-  name                = var.key_vault_name
-  location            = azurerm_resource_group.ml_rg.location
-  resource_group_name = azurerm_resource_group.ml_rg.name
-  tenant_id           = var.tenant_id
-  sku_name            = "standard"
-}
-
-resource "azurerm_application_insights" "ml_insights" {
-  name                = "${var.workspace_name}-insights"
-  location            = azurerm_resource_group.ml_rg.location
-  resource_group_name = azurerm_resource_group.ml_rg.name
-  application_type    = "web"
-}
-
-resource "azurerm_machine_learning_workspace" "ml_workspace" {
-  name                    = var.workspace_name
-  location                = azurerm_resource_group.ml_rg.location
-  resource_group_name     = azurerm_resource_group.ml_rg.name
-  application_insights_id = azurerm_application_insights.ml_insights.id
-  key_vault_id            = azurerm_key_vault.ml_kv.id
-  storage_account_id      = azurerm_storage_account.ml_storage.id
-
-  identity {
-    type = "SystemAssigned"
+resource "aws_s3_bucket_versioning" "ml_artifacts_versioning" {
+  bucket = aws_s3_bucket.ml_artifacts.id
+  versioning_configuration {
+    status = "Enabled"
   }
+}
+
+resource "aws_iam_role" "sagemaker_role" {
+  name = "${var.project_name}-sagemaker-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "sagemaker.amazonaws.com"
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "sagemaker_full_access" {
+  role       = aws_iam_role.sagemaker_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSageMakerFullAccess"
+}
+
+resource "aws_iam_role_policy_attachment" "s3_access" {
+  role       = aws_iam_role.sagemaker_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+}
+
+resource "aws_sagemaker_notebook_instance" "ml_notebook" {
+  name          = "${var.project_name}-notebook"
+  role_arn      = aws_iam_role.sagemaker_role.arn
+  instance_type = var.notebook_instance_type
 }
