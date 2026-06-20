@@ -1,33 +1,32 @@
-variable "project_id" {
-  description = "GCP project ID"
+variable "resource_group_name" {
+  description = "Name of the Azure resource group"
+  type        = string
+  default     = "ml-platform-rg"
+}
+
+variable "location" {
+  description = "Azure region for all resources"
+  type        = string
+  default     = "eastus"
+}
+
+variable "storage_account_name" {
+  description = "Globally unique name for the storage account"
   type        = string
 }
 
-variable "project_name" {
-  description = "Project name used as a prefix for resource naming"
-  type        = string
-  default     = "ml-platform"
-}
-
-variable "region" {
-  description = "GCP region for regional resources"
-  type        = string
-  default     = "us-central1"
-}
-
-variable "zone" {
-  description = "GCP zone for zonal resources (e.g., notebook instance)"
-  type        = string
-  default     = "us-central1-a"
-}
-
-variable "artifacts_bucket_name" {
-  description = "Globally unique GCS bucket name for ML artifacts"
+variable "key_vault_name" {
+  description = "Globally unique name for the key vault"
   type        = string
 }
 
-variable "machine_type" {
-  description = "Machine type for the Vertex AI Workbench instance"
+variable "workspace_name" {
+  description = "Name of the Azure Machine Learning workspace"
   type        = string
-  default     = "n1-standard-4"
+  default     = "ml-platform-workspace"
+}
+
+variable "tenant_id" {
+  description = "Azure AD tenant ID"
+  type        = string
 }

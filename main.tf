@@ -1,56 +1,56 @@
-# GCP module: provisions a GCS bucket for ML artifacts and a Vertex AI
-# Workbench instance for model development.
+# Azure module: provisions a resource group, an Azure Machine Learning
+# workspace, and supporting storage/key vault resources for ML workloads.
 
 terraform {
   required_providers {
-    google = {
-      source  = "hashicorp/google"
-      version = "~> 5.30"
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~> 3.100"
     }
   }
 }
 
-provider "google" {
-  project = var.project_id
-  region  = var.region
+provider "azurerm" {
+  features {}
 }
 
-resource "google_storage_bucket" "ml_artifacts" {
-  name                        = var.artifacts_bucket_name
-  location                    = var.region
-  uniform_bucket_level_access = true
+resource "azurerm_resource_group" "ml_rg" {
+  name     = var.resource_group_name
+  location = var.location
+}
 
-  versioning {
-    enabled = true
+resource "azurerm_storage_account" "ml_storage" {
+  name                     = var.storage_account_name
+  resource_group_name      = azurerm_resource_group.ml_rg.name
+  location                 = azurerm_resource_group.ml_rg.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+}
+
+resource "azurerm_key_vault" "ml_kv" {
+  name                = var.key_vault_name
+  location            = azurerm_resource_group.ml_rg.location
+  resource_group_name = azurerm_resource_group.ml_rg.name
+  tenant_id           = var.tenant_id
+  sku_name            = "standard"
+}
+
+resource "azurerm_application_insights" "ml_insights" {
+  name                = "${var.workspace_name}-insights"
+  location            = azurerm_resource_group.ml_rg.location
+  resource_group_name = azurerm_resource_group.ml_rg.name
+  application_type    = "web"
+}
+
+resource "azurerm_machine_learning_workspace" "ml_workspace" {
+  name                    = var.workspace_name
+  location                = azurerm_resource_group.ml_rg.location
+  resource_group_name     = azurerm_resource_group.ml_rg.name
+  application_insights_id = azurerm_application_insights.ml_insights.id
+  key_vault_id            = azurerm_key_vault.ml_kv.id
+  storage_account_id      = azurerm_storage_account.ml_storage.id
+
+  identity {
+    type = "SystemAssigned"
   }
-}
-
-resource "google_service_account" "vertex_sa" {
-  account_id   = "${var.project_name}-vertex-sa"
-  display_name = "Vertex AI service account for ${var.project_name}"
-}
-
-resource "google_project_iam_member" "vertex_ai_user" {
-  project = var.project_id
-  role    = "roles/aiplatform.user"
-  member  = "serviceAccount:${google_service_account.vertex_sa.email}"
-}
-
-resource "google_project_iam_member" "storage_object_admin" {
-  project = var.project_id
-  role    = "roles/storage.objectAdmin"
-  member  = "serviceAccount:${google_service_account.vertex_sa.email}"
-}
-
-resource "google_notebooks_instance" "ml_workbench" {
-  name         = "${var.project_name}-workbench"
-  location     = var.zone
-  machine_type = var.machine_type
-
-  vm_image {
-    project      = "deeplearning-platform-release"
-    image_family = "common-cpu-notebooks"
-  }
-
-  service_account = google_service_account.vertex_sa.email
 }
